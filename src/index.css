@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme - luxury cream and gold */
+    --background: 60 100% 96%; /* cream */
+    --foreground: 222.2 84% 4.9%; /* dark text */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 44 80% 52%; /* gold */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 94%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 44 80% 52%; /* gold */
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 44 50% 70%; /* gold-tinted border */
+    --input: 44 50% 70%;
+    --ring: 44 80% 52%; /* gold */
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 60 100% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 44 80% 52%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 44 50% 70%;
+    --sidebar-ring: 44 80% 52%;
+  }
+
+  .dark {
+    /* Dark luxury theme - dark with gold accents */
+    --background: 220 13% 10%; /* dark navy/black */
+    --foreground: 210 40% 98%; /* light text */
+
+    --card: 220 13% 12%; /* slightly lighter than background */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 44 80% 52%; /* gold */
+    --primary-foreground: 220 13% 10%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 44 80% 52%; /* gold */
+    --accent-foreground: 220 13% 10%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 44 50% 40%; /* darker gold border */
+    --input: 217.2 32.6% 17.5%;
+    --ring: 44 80% 52%; /* gold */
+    
+    --sidebar-background: 220 13% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 44 80% 52%;
+    --sidebar-primary-foreground: 220 13% 10%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 44 80% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground dark:bg-luxury-dark dark:text-gray-100;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+  
+  p, span, button, input, a {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply container mx-auto px-4 md:px-8 max-w-7xl;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent;
+  }
+  
+  .movie-card {
+    @apply relative overflow-hidden rounded-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl;
+  }
+  
+  .movie-card-overlay {
+    @apply absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100;
+  }
+  
+  .rating-star {
+    @apply text-luxury-gold;
+  }
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.8);
+}
