@@ -41,13 +41,13 @@ const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Detect if building for GitHub Pages (replace 'github' with your mode if different)
+// Detect if building for GitHub Pages (change mode name if different)
 const isGithubPages = import.meta.env.MODE === 'github';
 
 // Set basename from env variable or default empty string
 const basename = import.meta.env.VITE_BASE_URL || '';
 
-// Choose router based on environment
+// Choose router based on environment: HashRouter for GitHub Pages, BrowserRouter otherwise
 const Router = isGithubPages ? HashRouter : BrowserRouter;
 
 const App = () => (
