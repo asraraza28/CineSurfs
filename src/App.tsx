@@ -1,8 +1,8 @@
-import { Toaster } from '@/components/ui/sonner'; 
+import React, { useEffect } from 'react';
+import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useEffect } from 'react';
 
 // Pages
 import Index from './pages/Index';
@@ -30,7 +30,7 @@ const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    
+
     if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
       document.documentElement.classList.add("dark");
     } else {
@@ -41,12 +41,15 @@ const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Set basename from environment variable, default to empty string
+const basename = import.meta.env.VITE_BASE_URL || '';
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <ThemeInitializer>
         <Toaster />
-        <BrowserRouter basename="/CineSurfs">
+        <BrowserRouter basename={basename}>
           <Routes>
             {/* Main Pages */}
             <Route path="/" element={<Index />} />
@@ -58,7 +61,6 @@ const App = () => (
             <Route path="/search" element={<SearchResults />} />
             <Route path="/new" element={<NewReleases />} />
             <Route path="/about" element={<About />} />
-            
             {/* 404 Page */}
             <Route path="*" element={<NotFound />} />
           </Routes>
