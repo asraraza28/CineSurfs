@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 
 // Pages
 import Index from './pages/Index';
@@ -41,19 +41,25 @@ const ThemeInitializer = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Set basename from environment variable, default to empty string
+// Detect if building for GitHub Pages (replace 'github' with your mode if different)
+const isGithubPages = import.meta.env.MODE === 'github';
+
+// Set basename from env variable or default empty string
 const basename = import.meta.env.VITE_BASE_URL || '';
+
+// Choose router based on environment
+const Router = isGithubPages ? HashRouter : BrowserRouter;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <ThemeInitializer>
         <Toaster />
-        <BrowserRouter basename={basename}>
+        <Router basename={basename}>
           <Routes>
             {/* Main Pages */}
             <Route path="/" element={<Index />} />
-            {/* Updated route to handle both movies and series */}
+            {/* Route to handle both movies and series */}
             <Route path="/:type/:id" element={<MovieDetails />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/category/:id" element={<CategoryView />} />
@@ -64,7 +70,7 @@ const App = () => (
             {/* 404 Page */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+        </Router>
       </ThemeInitializer>
     </TooltipProvider>
   </QueryClientProvider>
