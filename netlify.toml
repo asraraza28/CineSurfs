@@ -1,0 +1,12 @@
+[build]
+  # The command Netlify will run to build your project
+  command = "pnpm build"
+
+  # The directory where the built files are located
+  publish = "dist"
+
+[dev]
+  # Optional: local dev server settings for Netlify CLI
+  command = "pnpm dev"
+  port = 5173
+  targetPort = 5173
