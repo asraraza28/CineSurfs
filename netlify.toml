@@ -1,7 +1,6 @@
 [build]
   # The command Netlify will run to build your project
   command = "pnpm build"
-
   # The directory where the built files are located
   publish = "dist"
 
@@ -10,3 +9,9 @@
   command = "pnpm dev"
   port = 5173
   targetPort = 5173
+
+[[redirects]]
+  # This redirect rule ensures all routes serve index.html for SPA routing
+  from = "/*"
+  to = "/index.html"
+  status = 200
