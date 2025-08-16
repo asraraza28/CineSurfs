@@ -137,9 +137,7 @@ export async function searchMovies(
   if (!q) return { results: [], total: 0 };
 
   const data = await fetchFromAPI(
-    tmdbUrl(
-      `/search/multi?query=${encodeURIComponent(q)}&page=${page}&include_adult=false`
-    )
+    tmdbUrl(`/search/multi?query=${encodeURIComponent(q)}&page=${page}&include_adult=false`)
   );
 
   const qNorm = normalizeTitle(q);
@@ -170,7 +168,6 @@ export async function searchMovies(
 }
 
 /* ---------- relevance helpers ---------- */
-
 /** normalize: lowercase, trim, strip punctuation */
 function normalizeTitle(s: string): string {
   return s
@@ -188,9 +185,9 @@ function scoreCandidate(r: any, qNorm: string): number {
   const tNorm = normalizeTitle(titleRaw);
 
   let base = 0;
-  if (tNorm === qNorm) base = 10000;              // perfect match
-  else if (tNorm.startsWith(qNorm)) base = 8000;  // starts with
-  else if (tNorm.includes(qNorm)) base = 5000;    // contains
+  if (tNorm === qNorm) base = 10000;               // perfect match
+  else if (tNorm.startsWith(qNorm)) base = 8000;   // starts with
+  else if (tNorm.includes(qNorm)) base = 5000;     // contains
 
   // token overlap bonus
   const qTokens = new Set(qNorm.split(" "));
@@ -207,7 +204,6 @@ function scoreCandidate(r: any, qNorm: string): number {
   // lightly weight both
   return base + pop * 5 + votes;
 }
-
 
 /* ───────────────────────────── Movie Details ──────────────────────────────── */
 export async function getMovieDetails(id: string, type: string = "movie"): Promise<MovieDetails> {
@@ -235,7 +231,11 @@ export async function getMovieDetails(id: string, type: string = "movie"): Promi
     Year: year,
     Rated: data.adult ? "R" : "PG",
     Released: data.release_date || data.first_air_date || "N/A",
-    Runtime: data.runtime ? `${data.runtime} min` : (data.episode_run_time?.[0] ? `${data.episode_run_time[0]} min` : "N/A"),
+    Runtime: data.runtime
+      ? `${data.runtime} min`
+      : data.episode_run_time?.[0]
+      ? `${data.episode_run_time[0]} min`
+      : "N/A",
     Genre: genreNames,
     Director: director,
     Writer: writers,
@@ -268,38 +268,64 @@ export async function getMovieDetails(id: string, type: string = "movie"): Promi
   };
 }
 
-
-
 /* ───────────────────────────── List Endpoints ─────────────────────────────── */
+
+// -- Trending (This Week): Best for "Weekly Top Rated"
 export async function getTrendingMovies(): Promise<Movie[]> {
   const data = await fetchFromAPI(tmdbUrl(`/trending/movie/week`));
   return mapToMovieList(data.results || []);
 }
 
-export async function getWeeklyHighestRated(): Promise<Movie[]> {
-  const data = await fetchFromAPI(
-    tmdbUrl(`/discover/movie?sort_by=vote_average.desc&vote_count.gte=100&page=1`)
+// -- Monthly Top Rated: Top rated movies released THIS month (with at least 100 votes)
+export async function getMonthlyHighestRated(): Promise<Movie[]> {
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10); // YYYY-MM-DD
+  const url = tmdbUrl(
+    `/discover/movie?sort_by=vote_average.desc&primary_release_date.gte=${firstOfMonth}&vote_count.gte=100&page=1`
   );
+  const data = await fetchFromAPI(url);
   return mapToMovieList(data.results || []);
 }
 
-export async function getMonthlyHighestRated(): Promise<Movie[]> {
-  const year = new Date().getFullYear();
+// -- All Time Classics: Top rated movies released before 1960, plus some handpicked
+export async function getAllTimeClassics(): Promise<Movie[]> {
+  // Main: Top-rated pre-1960s from TMDB
   const data = await fetchFromAPI(
     tmdbUrl(
-      `/discover/movie?sort_by=vote_average.desc&primary_release_year=${year}&vote_count.gte=50&page=1`
+      `/discover/movie?sort_by=vote_average.desc&primary_release_date.lte=1959-12-31&vote_count.gte=250&page=1`
     )
   );
-  return mapToMovieList(data.results || []);
+  let classics = mapToMovieList(data.results || []);
+
+  // Optionally: Add a few legendary modern classics (update this list as needed)
+  const modernIDs = [
+    238,     // The Godfather (1972)
+    278,     // The Shawshank Redemption (1994)
+    424,     // Schindler's List (1993)
+    155,     // The Dark Knight (2008)
+    19404,   // Dilwale Dulhania Le Jayenge (1995)
+    680,     // Pulp Fiction (1994)
+    13,      // Forrest Gump (1994)
+  ];
+
+  // Fetch those movies in parallel
+  const promises = modernIDs.map(id => fetchFromAPI(tmdbUrl(`/movie/${id}`)));
+  const moderns = await Promise.all(promises);
+  const modernClassicMovies = moderns.map(m => ({
+    Title: m.title,
+    Year: (m.release_date || "").split("-")[0] || "N/A",
+    imdbID: m.id?.toString() ?? "",
+    Type: "movie",
+    Poster: posterUrl(m.poster_path, m.title),
+  }));
+
+  classics = [...modernClassicMovies, ...classics.slice(0, 12)]; // combine classic sets
+  return classics;
 }
 
-export async function getAllTimeClassics(): Promise<Movie[]> {
-  const data = await fetchFromAPI(
-    tmdbUrl(`/discover/movie?sort_by=vote_average.desc&vote_count.gte=500&page=1`)
-  );
-  return mapToMovieList(data.results || []);
-}
-
+// -- New Releases
 export async function getNewReleases(): Promise<Movie[]> {
   const data = await fetchFromAPI(tmdbUrl(`/movie/now_playing?page=1`));
   return mapToMovieList(data.results || []);
@@ -319,16 +345,13 @@ export async function getSimilarMovies(id: string): Promise<Movie[]> {
   return mapToMovieList(data.results || []);
 }
 
-/* ───────────────────────────── Trailer Search (fallback) ────────────────────
+/* ───────────── Trailer Search (fallback) ─────────────
    NOTE: Prefer using `movie.trailerYoutubeKey` from `getMovieDetails`!
    This function is a fallback when you only have a title string.
    It tries TMDB search -> TMDB videos -> YouTube API (if key present).
 */
 export async function getYouTubeTrailer(movieTitle: string): Promise<string | null> {
   try {
-    console.log("getYouTubeTrailer() title =", movieTitle);
-    console.log("YT key present? ", Boolean(YOUTUBE_API_KEY));
-
     // Try TMDB search
     const searchData = await fetchFromAPI(
       tmdbUrl(`/search/movie?query=${encodeURIComponent(movieTitle)}`)

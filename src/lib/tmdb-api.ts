@@ -1,20 +1,21 @@
-/* TMDB-backed API utilities (CineSurfs)
- * -------------------------------------
- * - Preserves legacy Movie / MovieDetails interfaces so existing UI works.
- * - Uses TMDB for all real data (trending, new releases, charts, search, details, genre, similar).
- * - Pulls IMDb IDs via TMDB external_ids (important for 3rd-party players).
+/**
+ * CineSurfs TMDB API utilities
+ * ---------------------------
+ * Preserves legacy Movie / MovieDetails interfaces so existing UI works.
+ * Uses TMDB for all real data (trending, new releases, charts, search, details, genre, similar).
+ * Pulls IMDb IDs via TMDB external_ids (important for 3rd-party players).
  *
  * NOTE: Put keys in .env for production:
- *   VITE_TMDB_KEY=...
- *   VITE_YOUTUBE_KEY=...
+ *     VITE_TMDB_KEY=...
+ *     VITE_YOUTUBE_KEY=...
  */
 
 /* ─────────────────────────── Interfaces ─────────────────────────── */
 export interface Movie {
   Title: string;
   Year: string;
-  imdbID: string;   // TMDB id in lists; may become IMDb id in details
-  Type: string;     // "movie" (lists) / "series" if you extend later
+  imdbID: string; // TMDB id in lists; may become IMDb id in details
+  Type: string; // "movie" (lists) / "series"
   Poster: string;
 }
 
@@ -65,7 +66,6 @@ const TMDB_API_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_URL = "https://image.tmdb.org/t/p/w500";
 const TMDB_IMAGE_BACKDROP = "https://image.tmdb.org/t/p/original";
 
-// YouTube key is optional; if unset we just won't hit YouTube fallback.
 const YT_KEY = (import.meta as any).env?.VITE_YOUTUBE_KEY || "";
 
 /* ─────────────────────────── Genres ─────────────────────────── */
@@ -123,27 +123,43 @@ export async function getTrendingMovies(): Promise<Movie[]> {
   return mapToMovieList(data.results || []);
 }
 
-// Weekly Highest Rated (quality: vote avg + min vote count)
+// Weekly Highest Rated (top movies released during the current week)
 export async function getWeeklyHighestRated(): Promise<Movie[]> {
+  const today = new Date();
+  // Calculate most recent Sunday (start of week)
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay());
+  const startOfWeek = sunday.toISOString().slice(0, 10); // YYYY-MM-DD
+  const endOfWeek = new Date(sunday);
+  endOfWeek.setDate(sunday.getDate() + 6);
+  const endDate = endOfWeek.toISOString().slice(0, 10);
+
   const data = await fetchFromTMDB(
-    `/discover/movie?sort_by=vote_average.desc&vote_count.gte=100&page=1`
+    `/discover/movie?sort_by=vote_average.desc&primary_release_date.gte=${startOfWeek}&primary_release_date.lte=${endDate}&vote_count.gte=20&page=1`
   );
   return mapToMovieList(data.results || []);
 }
 
-// Monthly Highest Rated (current year to keep it fresh)
+// Monthly Highest Rated (top movies released during the current month)
 export async function getMonthlyHighestRated(): Promise<Movie[]> {
-  const year = new Date().getFullYear();
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // JS months 0 based
+  const monthPadded = String(month).padStart(2, "0");
+  const startOfMonth = `${year}-${monthPadded}-01`;
+  // get last day of the month
+  const endOfMonth = new Date(year, month, 0).toISOString().slice(0, 10);
+
   const data = await fetchFromTMDB(
-    `/discover/movie?sort_by=vote_average.desc&primary_release_year=${year}&vote_count.gte=50&page=1`
+    `/discover/movie?sort_by=vote_average.desc&primary_release_date.gte=${startOfMonth}&primary_release_date.lte=${endOfMonth}&vote_count.gte=20&page=1`
   );
   return mapToMovieList(data.results || []);
 }
 
-// All-Time Classics (higher vote gate)
+// All-Time Classics (unchanged: top movies with high votes and release date before 1970)
 export async function getAllTimeClassics(): Promise<Movie[]> {
   const data = await fetchFromTMDB(
-    `/discover/movie?sort_by=vote_average.desc&vote_count.gte=500&page=1`
+    `/discover/movie?sort_by=vote_average.desc&primary_release_date.lte=1970-01-01&vote_count.gte=500&page=1`
   );
   return mapToMovieList(data.results || []);
 }

@@ -22,44 +22,32 @@ import { formatRuntime, formatList, handleImageError } from "@/lib/utils";
 import { MovieList } from "./movie-list";
 import Trailer from "@/components/movies/Trailer";
 import PlayerControls from "@/components/movies/PlayerControls";
-import { DownloadButton } from "@/components/movies/DownloadButton";
 import axios from "axios";
+import { BetaPlayer } from "@/components/movies/BetaPlayer";
 
-/* ------------------------------------------------------------------ */
-/* Props                                                               */
-/* ------------------------------------------------------------------ */
 interface MovieDetailsProps {
   movie: MovieDetailsType;
 }
 
-/* Prefer env key; fall back to literal for safety (dev only!) */
 const TMDB_KEY =
   (import.meta as any).env?.VITE_TMDB_KEY || "870880200e45966e10a1bf95876576f1";
 
-/* ------------------------------------------------------------------ */
-/* Component                                                           */
-/* ------------------------------------------------------------------ */
 export function MovieDetails({ movie }: MovieDetailsProps) {
-  /* ======================= STATE =================================== */
-
-  // Similar titles
   const [similarMovies, setSimilarMovies] = useState<Movie[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(true);
-
-  // Trailer + Player toggles
   const [showTrailer, setShowTrailer] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
-
-  // Playback UI state
   const [animeEpisode, setAnimeEpisode] = useState(1);
   const [dub, setDub] = useState(false);
   const [skip, setSkip] = useState(0);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
-  const [selectedPlayer, setSelectedPlayer] = useState(1); // 1=vidsrc,2=vidlink,3=godrive
+  const [selectedPlayer, setSelectedPlayer] = useState(1); // 1=2embed, 2=vidsrc, 3=vidlink, 4=godrive
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
-  // Guess TMDB from incoming movie object: if tmdbID present use that; else if imdbID looks numeric, use that.
+  const [showBeta, setShowBeta] = useState(false);
+  const [betaSrc, setBetaSrc] = useState("");
+
   const initialTmdbGuess =
     movie.tmdbID
       ? String(movie.tmdbID)
@@ -67,44 +55,30 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
       ? movie.imdbID
       : "";
 
-  // Resolved IDs (updated by effect below)
   const [tmdbID, setTmdbID] = useState<string>(initialTmdbGuess);
   const [imdbID, setImdbID] = useState<string>(movie.imdbID);
-
-  // Dynamic TV metadata
   const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
   const [availableEpisodes, setAvailableEpisodes] = useState<number[]>([]);
 
-  // Derived type flags
   const lowerType = movie.Type?.toLowerCase() || "movie";
   const lowerGenre = movie.Genre?.toLowerCase() || "";
   const isSeries = lowerType === "series";
   const isAnime = lowerType === "anime" || lowerGenre.includes("animation");
 
-  /* ======================= EFFECT: resolve IDs ===================== */
+  // ID resolution logic
   useEffect(() => {
     let cancelled = false;
-
     async function resolveIds() {
       let resolvedTmdb = tmdbID;
       let resolvedImdb = imdbID;
-
-      // If we *only* got a TMDB numeric in imdbID (from list view), copy it into tmdb.
       if (!resolvedTmdb && resolvedImdb && !resolvedImdb.startsWith("tt")) {
         resolvedTmdb = resolvedImdb;
       }
-
-      // If we have a real IMDb (tt...) but no TMDB -> /find
       if (!resolvedTmdb && resolvedImdb?.startsWith("tt")) {
         try {
           const res = await axios.get(
             `https://api.themoviedb.org/3/find/${resolvedImdb}`,
-            {
-              params: {
-                api_key: TMDB_KEY,
-                external_source: "imdb_id",
-              },
-            }
+            { params: { api_key: TMDB_KEY, external_source: "imdb_id" } }
           );
           const found =
             res.data.movie_results?.[0]?.id || res.data.tv_results?.[0]?.id;
@@ -113,8 +87,6 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
           console.error("resolveIds: TMDB find error", err);
         }
       }
-
-      // If we *do* have TMDB but IMDb isn't tt... -> try movie external_ids, then tv external_ids
       if (resolvedTmdb && (!resolvedImdb || !resolvedImdb.startsWith("tt"))) {
         try {
           const res = await axios.get(
@@ -134,26 +106,21 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
           }
         }
       }
-
       if (!cancelled) {
         if (resolvedTmdb) setTmdbID(resolvedTmdb);
         if (resolvedImdb) setImdbID(resolvedImdb);
       }
     }
-
     resolveIds();
     return () => {
       cancelled = true;
     };
-    // re-run when incoming movie ids change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [movie.imdbID, movie.tmdbID]);
 
-  /* ======================= EFFECT: similar movies ================== */
+  // Similar movies
   useEffect(() => {
     if (!tmdbID) return;
     let cancelled = false;
-
     async function loadSimilar() {
       setLoadingSimilar(true);
       try {
@@ -165,18 +132,16 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
         if (!cancelled) setLoadingSimilar(false);
       }
     }
-
     loadSimilar();
     return () => {
       cancelled = true;
     };
   }, [tmdbID]);
 
-  /* ======================= EFFECT: seasons (TV) ==================== */
+  // Seasons
   useEffect(() => {
     if (!isSeries || !tmdbID) return;
     let cancelled = false;
-
     async function loadSeasons() {
       try {
         const res = await axios.get(
@@ -184,25 +149,22 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
           { params: { api_key: TMDB_KEY } }
         );
         const total = res.data.number_of_seasons ?? 0;
-        if (!cancelled) {
+        if (!cancelled)
           setAvailableSeasons(Array.from({ length: total }, (_, i) => i + 1));
-        }
       } catch (err) {
         console.error("Error fetching seasons:", err);
       }
     }
-
     loadSeasons();
     return () => {
       cancelled = true;
     };
   }, [isSeries, tmdbID]);
 
-  /* ======================= EFFECT: episodes (TV) =================== */
+  // Episodes
   useEffect(() => {
     if (!isSeries || !tmdbID) return;
     let cancelled = false;
-
     async function loadEpisodes() {
       try {
         const res = await axios.get(
@@ -218,17 +180,30 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
         console.error("Error fetching episodes:", err);
       }
     }
-
     loadEpisodes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
   }, [isSeries, tmdbID, season]);
 
-  /* ======================= PLAYER URL ============================== */
+  // Compose current player URL
   const playerUrl = useMemo(() => {
     const type = lowerType;
 
+    // 1: 2Embed
     if (selectedPlayer === 1) {
-      // vidsrc
+      if (type === "movie") return `https://www.2embed.cc/embed/${imdbID}`;
+      if (type === "series")
+        return `https://www.2embed.cc/embedtv/${imdbID}&s=${season}&e=${episode}`;
+      if (isAnime) {
+        return `https://www.2embed.cc/anime/${encodeURIComponent(
+          movie.Title.toLowerCase().replace(/\s+/g, "-")
+        )}-${animeEpisode}`;
+      }
+    }
+
+    // 2: Vidsrc
+    if (selectedPlayer === 2) {
       if (type === "movie") return `https://vidsrc.xyz/embed/movie?imdb=${imdbID}`;
       if (type === "series")
         return `https://vidsrc.xyz/embed/tv?imdb=${imdbID}&season=${season}&episode=${episode}`;
@@ -239,19 +214,21 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
       }
     }
 
-    if (selectedPlayer === 2) {
-      // vidlink
+    // 3: Vidlink
+    if (selectedPlayer === 3) {
       if (!tmdbID) return "";
       if (type === "movie") return `https://vidlink.pro/movie/${tmdbID}`;
       if (type === "series")
         return `https://vidlink.pro/tv/${tmdbID}/${season}/${episode}`;
       if (isAnime) {
-        return `https://vidlink.pro/anime/${tmdbID}/${animeEpisode}/${dub ? "dub" : "sub"}?fallback=true`;
+        return `https://vidlink.pro/anime/${tmdbID}/${animeEpisode}/${
+          dub ? "dub" : "sub"
+        }?fallback=true`;
       }
     }
 
-    if (selectedPlayer === 3) {
-      // godrive
+    // 4: GoDrive
+    if (selectedPlayer === 4) {
       if (!tmdbID) return "";
       if (type === "movie")
         return `https://godriveplayer.com/player.php?imdb=${imdbID}`;
@@ -270,16 +247,13 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
     episode,
     animeEpisode,
     dub,
+    movie.Title,
   ]);
 
-  /* ======================= IFRAME HANDLERS ========================= */
-  const handlePlay = () => {
-    const iframe = document.getElementById("movie-player") as HTMLIFrameElement | null;
-    iframe?.contentWindow?.postMessage("play", "*");
-  };
-
   const handleFullscreen = () => {
-    const iframe = document.getElementById("movie-player") as HTMLIFrameElement | null;
+    const iframe = document.getElementById(
+      "movie-player"
+    ) as HTMLIFrameElement | null;
     if (!iframe) return;
     if (iframe.requestFullscreen) {
       iframe.requestFullscreen();
@@ -290,18 +264,39 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
     }
   };
 
-  /* ======================= DOWNLOAD SUPPORT ======================== */
-  // Mirror selectedPlayer: Link 2 => vidlink, others => vidsrc
-  const downloadSource: "vidsrc" | "vidlink" =
-    selectedPlayer === 2 ? "vidlink" : "vidsrc";
+  const handleBetaClick = async () => {
+    try {
+      const source =
+        selectedPlayer === 1
+          ? "2embed"
+          : selectedPlayer === 2
+          ? "vidsrc"
+          : selectedPlayer === 3
+          ? "vidlink"
+          : "godrive";
 
-  // Provide both IDs; the DownloadButton will pick what it needs
-  const downloadTmdbID = tmdbID || (movie.tmdbID ? String(movie.tmdbID) : "");
-  const downloadImdbID = imdbID;
-  const apiBase =
-    (import.meta as any).env?.VITE_API_BASE || "http://localhost:5000";
+      const usedImdbID = imdbID.startsWith("tt") ? imdbID : `tt${imdbID}`;
+      const res = await fetch(
+        `/api/video-links?source=${source}&id=${encodeURIComponent(usedImdbID)}`
+      );
+      const data = await res.json();
+      let m3u8Url: string | null = null;
+      if (Array.isArray(data)) {
+        m3u8Url =
+          data.find((q: any) => q.url && q.url.endsWith(".m3u8"))?.url ||
+          data[0]?.url;
+      }
+      if (m3u8Url && m3u8Url.endsWith(".m3u8")) {
+        setBetaSrc(m3u8Url);
+        setShowBeta(true);
+      } else {
+        alert("No direct HLS stream available for Beta player.");
+      }
+    } catch (err) {
+      alert("Unable to load Beta player stream.");
+    }
+  };
 
-  /* ======================= RENDER ================================== */
   return (
     <div className="container-custom py-8">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3 lg:grid-cols-4">
@@ -326,9 +321,7 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
               onError={handleImageError}
             />
           </motion.div>
-
           <div className="mt-6 space-y-4">
-            {/* Trailer toggle */}
             <Button
               className="w-full bg-luxury-gold text-black hover:bg-luxury-lightGold"
               onClick={() => setShowTrailer((s) => !s)}
@@ -336,8 +329,6 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
               <Video className="mr-2 h-4 w-4" />
               {showTrailer ? "Hide Trailer" : "Watch Trailer"}
             </Button>
-
-            {/* Player toggle */}
             <Button
               className="w-full bg-luxury-gold text-black hover:bg-luxury-lightGold"
               onClick={() => {
@@ -348,19 +339,8 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
               <Play className="mr-2 h-4 w-4" />
               {showPlayer ? "Hide Player" : "Watch Now"}
             </Button>
+            {showTrailer && <Trailer title={movie.Title} />}
 
-            {/* Trailer (basic) */}
-            {showTrailer && (
-              <Trailer
-                title={movie.Title}
-                /* If your Trailer component supports these, uncomment:
-                tmdbId={tmdbID || movie.tmdbID}
-                initialKey={movie.trailerYoutubeKey}
-                */
-              />
-            )}
-
-            {/* Player */}
             {showPlayer && (
               <>
                 <PlayerControls
@@ -379,28 +359,32 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
                   availableSeasons={availableSeasons}
                   availableEpisodes={availableEpisodes}
                 />
-
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex gap-2 flex-wrap">
                   <Button
                     variant={selectedPlayer === 1 ? "default" : "outline"}
                     onClick={() => setSelectedPlayer(1)}
                   >
-                    Link 1
+                    2Embed
                   </Button>
                   <Button
                     variant={selectedPlayer === 2 ? "default" : "outline"}
                     onClick={() => setSelectedPlayer(2)}
                   >
-                    Link 2
+                    Vidsrc
                   </Button>
                   <Button
                     variant={selectedPlayer === 3 ? "default" : "outline"}
                     onClick={() => setSelectedPlayer(3)}
                   >
-                    Link 3
+                    Vidlink
+                  </Button>
+                  <Button
+                    variant={selectedPlayer === 4 ? "default" : "outline"}
+                    onClick={() => setSelectedPlayer(4)}
+                  >
+                    GoDrive
                   </Button>
                 </div>
-
                 <div className="relative mt-4 aspect-video w-full">
                   <button
                     onClick={() => setShowPlayer(false)}
@@ -422,17 +406,15 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
                     </p>
                   )}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <Button onClick={handlePlay}>Play</Button>
                     <Button onClick={handleFullscreen}>Fullscreen</Button>
-                    <DownloadButton
-                      tmdbID={downloadTmdbID}
-                      imdbID={downloadImdbID}
-                      title={movie.Title}
-                      source={downloadSource}
-                      apiBase={apiBase}
-                    />
+                    <Button variant="outline" onClick={handleBetaClick}>
+                      Beta
+                    </Button>
                   </div>
                 </div>
+                {showBeta && betaSrc && (
+                  <BetaPlayer src={betaSrc} onClose={() => setShowBeta(false)} />
+                )}
               </>
             )}
           </div>
@@ -448,7 +430,6 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
             <h1 className="font-serif text-3xl font-bold md:text-4xl">
               {movie.Title}
             </h1>
-
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
               <div className="flex items-center">
                 <Star className="mr-1 h-4 w-4 text-luxury-gold" />
@@ -470,7 +451,6 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
                 {movie.Language}
               </div>
             </div>
-
             <div className="mt-4 flex flex-wrap gap-2">
               {movie.Genre.split(", ").map((genre) => (
                 <span
@@ -481,14 +461,11 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
                 </span>
               ))}
             </div>
-
             <div className="mt-6">
               <h2 className="font-serif text-xl font-semibold">Plot</h2>
               <p className="mt-2 text-muted-foreground">{movie.Plot}</p>
             </div>
-
             <Separator className="my-6" />
-
             <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <h2 className="flex items-center gap-2 font-serif text-xl font-semibold">
@@ -502,7 +479,6 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
                   ))}
                 </div>
               </div>
-
               <div>
                 <h2 className="flex items-center gap-2 font-serif text-xl font-semibold">
                   <Award className="h-5 w-5" /> Director & Awards
@@ -529,7 +505,7 @@ export function MovieDetails({ movie }: MovieDetailsProps) {
         </div>
       </div>
 
-      {/* Similar */}
+      {/* Similar movies */}
       <div className="mt-12">
         <MovieList
           title="You May Also Like"

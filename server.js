@@ -63,7 +63,7 @@ function parseM3u8ToVariants(m3u8Text, baseUrl) {
 }
 
 // ---------------------------------------------------------------------------
-// Puppeteer Scraper for .m3u8
+// Puppeteer Scraper for .m3u8 (handles dynamic iframe loading)
 // ---------------------------------------------------------------------------
 async function scrapeM3u8(embedUrl) {
   console.log(`[puppeteer] Launching browser for: ${embedUrl}`);
@@ -73,34 +73,38 @@ async function scrapeM3u8(embedUrl) {
   await page.setUserAgent(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
   );
+
+  // Step 1: Go to the main embed page
   await page.goto(embedUrl, { waitUntil: "networkidle2", timeout: 30000 });
 
-  let m3u8Url = null;
+  // Step 2: Wait for iframe#player_iframe to be inserted by JS (max 15s)
+  try {
+    await page.waitForSelector("iframe#player_iframe", { timeout: 15000 });
+  } catch {
+    console.warn("No player_iframe found on page after waiting");
+    await browser.close();
+    return null;
+  }
 
-  // Intercept network requests
+  const iframeHandle = await page.$('iframe#player_iframe');
+  const iframeSrc = await iframeHandle.evaluate(el => el.getAttribute("src"));
+  const iframeUrl = iframeSrc.startsWith("http") ? iframeSrc : `https:${iframeSrc}`;
+
+  // Step 3: Navigate to the iframe's actual src
+  await page.goto(iframeUrl, { waitUntil: "networkidle2", timeout: 30000 });
+
+  // Step 4: Listen for .m3u8 network requests on this page
+  let m3u8Url = null;
   page.on("response", async (response) => {
     const url = response.url();
     if (url.includes(".m3u8")) {
+      console.log("Found .m3u8 URL:", url);
       m3u8Url = url;
     }
   });
 
-  // Wait and interact
-  await page.waitForTimeout(8000); // give time for player to load
-  const frames = page.frames();
-
-  for (const frame of frames) {
-    try {
-      const frameContent = await frame.content();
-      if (frameContent.includes(".m3u8")) {
-        const match = frameContent.match(/https?:\/\/[^"']+\.m3u8[^"']*/);
-        if (match) {
-          m3u8Url = match[0];
-          break;
-        }
-      }
-    } catch {}
-  }
+  // Step 5: Wait longer for the player to issue video requests
+  await page.waitForTimeout(25000);
 
   await browser.close();
   return m3u8Url;

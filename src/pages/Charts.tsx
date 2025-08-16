@@ -4,7 +4,7 @@ import { Tab, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/t
 import { MainLayout } from "@/components/layout/main-layout";
 import { MovieList } from "@/components/movies/movie-list";
 import { 
-  getWeeklyHighestRated, 
+  getTrendingMovies,       // updated here
   getMonthlyHighestRated, 
   getAllTimeClassics 
 } from "@/lib/tmdb-api";  // switched to TMDB
@@ -17,7 +17,7 @@ export default function ChartsPage() {
 
   const { data: weeklyMovies, isLoading: weeklyLoading } = useQuery({
     queryKey: ["weeklyMoviesChart"],
-    queryFn: getWeeklyHighestRated
+    queryFn: getTrendingMovies   // <-- updated from getWeeklyHighestRated
   });
   
   const { data: monthlyMovies, isLoading: monthlyLoading } = useQuery({
@@ -54,7 +54,7 @@ export default function ChartsPage() {
           
           <TabsContent value="weekly">
             <MovieList
-              title="Weekly Highest Rated"
+              title="Weekly Top Rated"
               movies={weeklyMovies || []}
               loading={weeklyLoading}
             />
@@ -62,7 +62,7 @@ export default function ChartsPage() {
           
           <TabsContent value="monthly">
             <MovieList
-              title="Monthly Highest Rated"
+              title="Monthly Top Rated"
               movies={monthlyMovies || []}
               loading={monthlyLoading}
             />

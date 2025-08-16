@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "c82eb94e-8b91-40b2-b85c-f624b2218190"
+      }
+    },
+    "android": {
+      "package": "com.asrar.cinesurfs"
+    }
+  }
+}

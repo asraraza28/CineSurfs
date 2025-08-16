@@ -1,14 +1,13 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vite';         // ✅ REQUIRED!
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  base: '/CineSurfs/',   // ✅ Add this line (important for GitHub Pages)
+export default defineConfig({
+  base: '', // For Netlify, use empty string or remove this line
   plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
-}));
+});

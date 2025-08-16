@@ -8,7 +8,7 @@
 import type { Movie } from "@/lib/api";
 
 /* ------------------------------------------------------------------ */
-/* Config                                                             */
+/* Config                                                            */
 /* ------------------------------------------------------------------ */
 const TMDB_API_KEY =
   (import.meta as any).env?.VITE_TMDB_KEY || "870880200e45966e10a1bf95876576f1";
@@ -16,17 +16,38 @@ const TMDB_API_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_URL = "https://image.tmdb.org/t/p/w500";
 
 /* ------------------------------------------------------------------ */
-/* Maps                                                               */
+/* Maps                                                              */
 /* ------------------------------------------------------------------ */
 
 // TMDB watch provider IDs (region=US)
+// Added aliases for all common route slugs!
 const streamingProviderMap: Record<string, number> = {
+  // Netflix
   "netflix": 8,
+
+  // Amazon Prime Video
+  "prime": 9,
   "amazon-prime": 9,
+  "amazonprime": 9,
+  "amazon": 9,
+
+  // Hulu
   "hulu": 15,
+
+  // Disney+
   "disney+": 337,
+  "disney": 337,
+
+  // HBO Max (aka Max)
+  "hbo": 384,
   "hbo-max": 384,
+  "max": 384,
+
+  // Apple TV+
+  "apple": 350,
   "apple-tv+": 350,
+  "appletv": 350,
+  "appletv+": 350,
 };
 
 // ISO language codes
