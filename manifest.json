@@ -1,0 +1,16 @@
+{
+  "short_name": "CineSurfs",
+  "name": "CineSurfs - Ride the Waves of Cinematic Excellence",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#daaf37",
+  "description": "Discover movies and TV shows with elegant, curated recommendations and detailed information.",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
